@@ -28,7 +28,7 @@ app.post('/auth/login', (req, res, next) =>  {
     if (err || !user) {
       return res.redirect('/failure')
     }
-    const token = AUTH.generateToken({ role: 'user', user: user.username});
+    const token = AUTH.generateToken({ role: 'user', user: user.username, data: user});
     res.cookie('jwt', token, { httpOnly: true });
     return res.redirect('/home');
   })(req, res, next)
@@ -48,26 +48,56 @@ app.get('/oidc/cb', (req, res, next) => {
     if (err || !user) {
       return res.redirect('/failure')
     }
-    const token = AUTH.generateToken({ role: 'user', user: user.given_name});
+    const token = AUTH.generateToken({ role: 'user', user: user.given_name, data: user});
     res.cookie('jwt', token, { httpOnly: true });
     return res.redirect('/home');
   })(req, res, next)
+})
+
+// github auth 
+
+app.get('/github/login', (req, res, next) => {
+  return passport.authenticate('github', 
+    { 
+      scope: [ 'user:email' ],
+      session: false
+    }
+  )(req, res, next)
+});
+
+app.get('/auth/github/cb',  (req, res, next) => {
+  return passport.authenticate('github', 
+    { 
+      failureRedirect: '/login',
+      session: false
+    },
+    (err, user, info) => {
+      if (err || !user) {
+        return res.redirect('/failure')
+      }
+      const token = AUTH.generateToken({ role: 'user', user: user.id, data: user});
+      res.cookie('jwt', token, { httpOnly: true });
+      return res.redirect('/home');
+
+    } 
+  )(req, res, next)
 })
 
 app.get(
   "/home",
   passport.authenticate("jwt", { session: false }),
   (req, res, next) => {
-    res.send(`
-      <head>
-          <meta charset="UTF-8">
-          <meta http-equiv="X-UA-Compatible" content="IE=edge">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Login</title>
-      </head>
-      <h3>Bienvenido ${req.user.sub}</h3>
-      <a href="/logout">LogOut</a>
-    `);
+    res.json(req.user.claims)
+    // res.send(`
+    //   <head>
+    //       <meta charset="UTF-8">
+    //       <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    //       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    //       <title>Login</title>
+    //   </head>
+    //   <h3>Bienvenido ${JSON.stringify(req.user.claims.data)}</h3>
+    //   <a href="/logout">LogOut</a>
+    // `);
   }
 );
 

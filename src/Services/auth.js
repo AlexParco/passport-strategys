@@ -4,6 +4,21 @@ const jwt = require('jsonwebtoken');
 const GoogleStrategy = require('passport-google-oauth2').Strategy
 const LocalStrategy = require('passport-local').Strategy
 const JWTStrategy = require('passport-jwt').Strategy
+const GitHubStrategy = require('passport-github2').Strategy
+
+const GITHUB_CLIENT_ID = "8299d02ae48c85f0cb09"
+const GITHUB_CLIENT_SECRET = "8b6e6d80c2a1a1661b355d501ef5a41c4dfd9270"
+
+passport.use(new GitHubStrategy({
+    clientID: GITHUB_CLIENT_ID,
+    clientSecret: GITHUB_CLIENT_SECRET,
+    callbackURL: `http://localhost:${process.env.PORT}/auth/github/cb`
+  },
+  function(accessToken, refreshToken, profile, done) {
+    console.log(profile)
+    return done(null, profile);
+  }
+));
 
 passport.use(new LocalStrategy(
   {
@@ -59,13 +74,16 @@ passport.deserializeUser(function(user, done) {
   done(null, user)
 })
 
-const generateToken = ({role, user}) => {
+const generateToken = ({role, user, data}) => {
   const claims = {
     sub: user,
     iss: `localhost:${process.env.PORT}`,
     aud: `localhost:${process.env.PORT}`,
     exp: Math.floor(Date.now() / 1000) + 604800,
-    role
+    role,
+    claims: {
+      data
+    }
   }
   return jwt.sign(claims, process.env.JWT_SECRET_KEY)
 }
